@@ -59,7 +59,7 @@ class Decoder(tf.keras.Model):
         # x shape == (batch_size * max_length, hidden_size)
         x = tf.reshape(x, (-1, x.shape[2]))
         
-        #x= self.dropout(x)
+        #x= self.dropout(x,training=True)
         #x= self.batchnormalization(x)
     
         # output shape == (batch_size * max_length, vocab)

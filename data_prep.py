@@ -251,6 +251,20 @@ def loss_function(real, pred,loss_object):
 
     return tf.reduce_mean(loss_)
 
+
+def create_padding_mask(seq):
+  seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
+
+  # add extra dimensions to add the padding
+  # to the attention logits.
+  return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, 1, seq_len)
+
+def create_masks(inp):
+    # Encoder padding mask
+    enc_padding_mask = create_padding_mask(inp)
+  
+    return enc_padding_mask
+
 i = 0
 loss = 0
 for (b,(img,ques,ans)) in enumerate(dataset):
@@ -273,7 +287,7 @@ for (b,(img,ques,ans)) in enumerate(dataset):
   if i != 1:
     with tf.GradientTape() as tape:
         #print("answer:",ans)
-        enc_op = encoder(ques,training=False, mask=None)
+        enc_op = encoder(ques,training=True, mask=None)
         #print(enc_output_img.shape)
                 
         dec_hidden = enc_op
@@ -318,9 +332,9 @@ for epoch in range(EPOCHS):
     
     for (b,(img,ques,ans)) in enumerate(dataset):
         loss = 0
-        
+        enc_padding_mask = create_masks(ques)
         with tf.GradientTape() as tape:
-            enc_output = encoder(ques,training=False, mask=None)
+            enc_output = encoder(ques,training=True, mask=enc_padding_mask)
             
             dec_hidden = enc_output
             
