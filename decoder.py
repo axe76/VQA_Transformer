@@ -9,7 +9,7 @@ import tensorflow as tf
 import numpy as np
 
 class Decoder(tf.keras.Model):
-    def __init__(self, vocab_size=400, dec_units=512,embedding_dim=256):
+    def __init__(self, vocab_size=13115, dec_units=512,embedding_dim=256):
         super(Decoder, self).__init__()
         self.units = dec_units
 
