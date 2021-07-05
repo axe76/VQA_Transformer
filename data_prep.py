@@ -101,7 +101,7 @@ train_answers, train_questions, img_name_vector,train_accepted_answers = shuffle
                                           random_state=1)
 
 # selecting the first 30000 captions from the shuffled set
-num_examples = 1000
+num_examples = 443757#1000
 train_answers = train_answers[:num_examples]
 train_questions = train_questions[:num_examples]
 img_name_vector = img_name_vector[:num_examples]
@@ -200,7 +200,7 @@ img_name_train, img_name_val, question_train, question_val,answer_train, answer_
 
 # feel free to change these parameters according to your system's configuration
 
-BATCH_SIZE = 32 #2 #64
+BATCH_SIZE = 128 #2 #64
 BUFFER_SIZE = 300 #1000
 num_steps = len(img_name_train) // BATCH_SIZE
 # shape of the vector extracted from VGG is (49, 512)
@@ -265,62 +265,9 @@ def create_masks(inp):
   
     return enc_padding_mask
 
-i = 0
-loss = 0
-for (b,(img,ques,ans)) in enumerate(dataset):
-  if i != 1:
-      print(ans.shape)
-      dec_input = tf.expand_dims([answer_tokenizer.word_index['<start>']] * ans.shape[0], 1)
-      print(dec_input.shape)
-      op = encoder(ques,training=False, mask=None)
-      print(op.shape)
-      dec_op,dec_state,_ = decoder(dec_input,op,img)
-      print(dec_op.shape)
-      i += 1
-  else:
-      break
 
-i = 0
-loss = 0
-total_loss = 0
-for (b,(img,ques,ans)) in enumerate(dataset):
-  if i != 1:
-    with tf.GradientTape() as tape:
-        #print("answer:",ans)
-        enc_op = encoder(ques,training=True, mask=None)
-        #print(enc_output_img.shape)
-                
-        dec_hidden = enc_op
-        print("Enc output ques",dec_hidden.shape)
-                
-        #dec_input = tf.expand_dims(["~"] * BATCH_SIZE, 1)  
-        dec_input = tf.expand_dims([answer_tokenizer.word_index['<start>']] * ans.shape[0], 1)    
-        #print(len(dec_input))
-                
-        # Teacher forcing - feeding the target as the next input
-        for t in range(1, ans.shape[1]):
-            # passing enc_output to the decoder
-            predictions, dec_hidden, _ = decoder(dec_input, dec_hidden,img)
-            #print(predictions.shape)
-            
-            loss += loss_function(ans[:, t], predictions, loss_object)
-            print("Loss",loss.numpy())
-            
-            # using teacher forcing
-            #print(ans[:, t])
-            dec_input = tf.expand_dims(ans[:, t], 1)
-        
-    total_loss += (loss / int(ans.shape[1]))
-        
-    variables = encoder.variables + decoder.variables
-    
-    gradients = tape.gradient(loss, variables)
-  
-    optimizer.apply_gradients(zip(gradients, variables))
-        
-    i += 1
-  else:
-      break
+
+
 
 '''Maaaaanooonnnss have achieved training'''
 EPOCHS = 5
@@ -335,7 +282,6 @@ for epoch in range(EPOCHS):
         enc_padding_mask = create_masks(ques)
         with tf.GradientTape() as tape:
             enc_output = encoder(ques,training=True, mask=enc_padding_mask)
-            
             dec_hidden = enc_output
             
             dec_input = tf.expand_dims([answer_tokenizer.word_index['<start>']] * ans.shape[0], 1)        
@@ -367,3 +313,38 @@ for epoch in range(EPOCHS):
                                         total_loss/19))
     print('Time taken for 1 epoch {} sec\n'.format(time.time() - start)) 
 
+def evaluate(image,question):
+    temp_input = tf.expand_dims(load_image(image)[0], 0)
+    img_tensor_val = image_features_extract_model(temp_input)
+    img_tensor_val = tf.reshape(img_tensor_val, (img_tensor_val.shape[0],
+                                                 -1,
+                                                 img_tensor_val.shape[3]))
+    question_tokenized = question_tokenizer.texts_to_sequences(question)
+    question_tensor = tf.keras.preprocessing.sequence.pad_sequences(question_tokenized, maxlen=19,padding='post')
+    padding_mask = create_masks(question_tensor)
+    enc_output = encoder(question_tensor,training=False, mask=padding_mask)
+    dec_hidden = enc_output
+    dec_input = tf.expand_dims([answer_tokenizer.word_index['<start>']], 0)
+    result = []
+    for i in range(max_a):
+        predictions, dec_hidden, _ = decoder(dec_input, dec_hidden,img_tensor_val)
+        predicted_id = tf.random.categorical(predictions, 1)[0][0].numpy()
+            
+        result.append(answer_tokenizer.index_word[predicted_id])
+        if answer_tokenizer.index_word[predicted_id] == '<end>':
+            return result
+        dec_input = tf.expand_dims([predicted_id], 0)
+        
+    return result
+
+random_image_input = img_name_vector[2]
+im = Image.open(random_image_input)
+im.show()
+test_question = [train_questions[2]]
+print(test_question)
+test_out = evaluate(random_image_input,test_question)
+
+
+    
+
+    
