@@ -266,13 +266,22 @@ def create_masks(inp):
     return enc_padding_mask
 
 
+checkpoint_path = "./checkpoints/train"
+ckpt = tf.train.Checkpoint(encoder=encoder,
+                           decoder=decoder,
+                           optimizer=optimizer)
+ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
 
+#Start checkpointing from the checkpoint last saved
+start_epoch = 0
+if ckpt_manager.latest_checkpoint:
+  start_epoch = int(ckpt_manager.latest_checkpoint.split('-')[-1])
 
 
 '''Maaaaanooonnnss have achieved training'''
 EPOCHS = 5
 
-for epoch in range(EPOCHS):
+for epoch in range(start_epoch,EPOCHS):
     start = time.time()
 
     total_loss = 0
@@ -309,8 +318,12 @@ for epoch in range(EPOCHS):
                                                          b,
                                                          loss.numpy() / int(ans.shape[1])))
     
+    
+    if epoch % 1 == 0:
+        ckpt_manager.save()
+        
     print('Epoch {} Loss {:.4f}'.format(epoch + 1,
-                                        total_loss/19))
+                                        total_loss/num_steps))
     print('Time taken for 1 epoch {} sec\n'.format(time.time() - start)) 
 
 def evaluate(image,question):
@@ -320,7 +333,7 @@ def evaluate(image,question):
                                                  -1,
                                                  img_tensor_val.shape[3]))
     question_tokenized = question_tokenizer.texts_to_sequences(question)
-    question_tensor = tf.keras.preprocessing.sequence.pad_sequences(question_tokenized, maxlen=19,padding='post')
+    question_tensor = tf.keras.preprocessing.sequence.pad_sequences(question_tokenized, maxlen=24,padding='post')
     padding_mask = create_masks(question_tensor)
     enc_output = encoder(question_tensor,training=False, mask=padding_mask)
     dec_hidden = enc_output
@@ -337,10 +350,10 @@ def evaluate(image,question):
         
     return result
 
-random_image_input = img_name_vector[2]
+random_image_input = img_name_vector[12]
 im = Image.open(random_image_input)
 im.show()
-test_question = [train_questions[2]]
+test_question = [train_questions[12]]
 print(test_question)
 test_out = evaluate(random_image_input,test_question)
 
