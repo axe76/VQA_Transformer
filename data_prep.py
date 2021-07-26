@@ -10,6 +10,7 @@ import tensorflow as tf
 # We'll generate plots of attention in order to see which parts of an image
 # our model focuses on during captioning
 import matplotlib.pyplot as plt
+from random import randint
 
 # Scikit-learn includes many helpful utilities
 from sklearn.model_selection import train_test_split
@@ -276,10 +277,15 @@ ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
 start_epoch = 0
 if ckpt_manager.latest_checkpoint:
   start_epoch = int(ckpt_manager.latest_checkpoint.split('-')[-1])
+  ckpt.restore(ckpt_manager.latest_checkpoint)
 
+# saved_chkpt_path = './checkpoints/train\\ckpt-5'
+# ckpt.restore(saved_chkpt_path)
 
+train_acc_metric = tf.keras.metrics.SparseCategoricalAccuracy()
+sparse_cat_acc = tf.metrics.SparseCategoricalAccuracy()
 '''Maaaaanooonnnss have achieved training'''
-EPOCHS = 5
+EPOCHS = 15
 
 for epoch in range(start_epoch,EPOCHS):
     start = time.time()
@@ -289,6 +295,8 @@ for epoch in range(start_epoch,EPOCHS):
     for (b,(img,ques,ans)) in enumerate(dataset):
         loss = 0
         enc_padding_mask = create_masks(ques)
+        acc = 0
+        pred_total = tf.zeros([0,0,13115])
         with tf.GradientTape() as tape:
             enc_output = encoder(ques,training=True, mask=enc_padding_mask)
             dec_hidden = enc_output
@@ -300,10 +308,18 @@ for epoch in range(start_epoch,EPOCHS):
                 # passing enc_output to the decoder
                 predictions, dec_hidden, _ = decoder(dec_input, dec_hidden,img)
                 
+                #print(predictions.numpy())
                 loss += loss_function(ans[:, t], predictions, loss_object)
-                
+                #print(ans[:, t].shape)
+                #print(predictions.shape)
                 # using teacher forcing
                 dec_input = tf.expand_dims(ans[:, t], 1)
+                #train_acc_metric.update_state(ans[:, t], predictions)
+                #print(train_acc_metric.result())
+                acc = (sparse_cat_acc(ans[:, t], predictions).numpy())
+                sparse_cat_acc.reset_states()
+                print(acc)
+                #train_acc_metric.reset_states()
         
         total_loss += (loss / int(ans.shape[1]))
         
@@ -312,12 +328,13 @@ for epoch in range(start_epoch,EPOCHS):
         gradients = tape.gradient(loss, variables)
       
         optimizer.apply_gradients(zip(gradients, variables))
-
+        
         if b % 10 == 0:
-            print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1,
+            print('Epoch {} Batch {} Loss {:.4f} Accuracy {:.4f}'.format(epoch + 1,
                                                          b,
-                                                         loss.numpy() / int(ans.shape[1])))
-    
+                                                         loss.numpy() / int(ans.shape[1]), (acc/(128*19)*100)))#float(train_acc_metric.result())
+        
+        #train_acc_metric.reset_states()
     
     if epoch % 1 == 0:
         ckpt_manager.save()
@@ -342,7 +359,7 @@ def evaluate(image,question):
     for i in range(max_a):
         predictions, dec_hidden, _ = decoder(dec_input, dec_hidden,img_tensor_val)
         predicted_id = tf.random.categorical(predictions, 1)[0][0].numpy()
-            
+        #predicted_id = tf.argmax(predictions[0]).numpy()
         result.append(answer_tokenizer.index_word[predicted_id])
         if answer_tokenizer.index_word[predicted_id] == '<end>':
             return result
@@ -350,12 +367,50 @@ def evaluate(image,question):
         
     return result
 
-random_image_input = img_name_vector[12]
+test_id = 41#randint(0,100) 130503 
+random_image_input = img_name_vector[test_id]
 im = Image.open(random_image_input)
 im.show()
-test_question = [train_questions[12]]
+test_question = [train_questions[test_id]]
 print(test_question)
 test_out = evaluate(random_image_input,test_question)
+print(test_out)
+answer_check = train_answers[test_id]
+print("Answer",answer_check)
+
+
+counter = 0
+ans_list = answer_check.split()[1:-1]
+predicted_ans_list = test_out[:-1]
+for i in predicted_ans_list:
+    if i in ans_list:
+        counter += 1
+acc = counter/(max(len(ans_list),len(predicted_ans_list)))
+print(acc*100)
+
+total_accuracy = 0
+for test_id in tqdm(range(len(train_questions))):#len(train_questions)
+    image_input = img_name_vector[test_id]
+    question_input = [train_questions[test_id]]
+    pred_out = evaluate(image_input,question_input)
+    answer_check = train_answers[test_id]
+    
+    counter = 0
+    ans_list = answer_check.split()[1:-1]
+    predicted_ans_list = pred_out[:-1]
+    for i in predicted_ans_list:
+        if i in ans_list:
+            counter += 1
+    acc = counter/(max(len(ans_list),len(predicted_ans_list)))
+    total_accuracy += acc*100
+    
+total_accuracy = total_accuracy/len(train_questions) 
+print("Total training accuracy: ", total_accuracy)
+    
+
+
+
+
 
 
     
