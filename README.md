@@ -1,2 +1,2 @@
 # VQA_BERT_VGG
-Transformer based model for VQA
+Lightweight Transformer based model for VQA
