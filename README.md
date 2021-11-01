@@ -10,6 +10,8 @@ The output of shape (batch_size,ques_seq_length,d_model) is average pooled along
 The decoder is based on the Bahdanau Attention based seq2seq model decoder utilised for many text generation tasks as shown below:
 ![attention_mechanism](https://user-images.githubusercontent.com/36445587/139669770-02c1c1b8-6ffc-4ac6-8ca2-5191996b71c0.jpg)
 
+The resulting model is one that achieves an accuracy comparable to the latest implementations while being more lightweight.
+
 # Usage
 To train the model: <br>
 ```bash
@@ -19,3 +21,10 @@ $ python3 main.py
 The last sections of main.py contain the code for inference and can either be selectively run or utilised in another python file.
 
 # Working
+Input Image:<br>
+![COCO_train2014_000000027511](https://user-images.githubusercontent.com/36445587/139670430-aead92a7-bb08-4850-b852-2f92fc401ebe.jpg)
+
+Input Question and Output Answer:<br>
+![Capture](https://user-images.githubusercontent.com/36445587/139670883-60e4ae25-d445-4e5d-8c7e-ba6f2507aacd.JPG)
+
+
