@@ -7,7 +7,7 @@ The input questions are passed through an embedding layer and a Transformer enco
 
 The output of shape (batch_size,ques_seq_length,d_model) is average pooled along the temporal dimension. The decoder takes the attention vector output by the transformer and the input image (which has been passed through VGG16 except the top layer) and passes it through a Bahdanau attention mechanism followed by GRU layers to give an output sequence representing the answer of the question. <br>
 
-The decoder is based on the Bahdanau Attention based seq2seq model decoder utilised for many text generation tasks as shown below:
+The decoder is based on the Bahdanau Attention based seq2seq model decoder utilised for many text generation tasks as shown below:<br>
 ![attention_mechanism](https://user-images.githubusercontent.com/36445587/139669770-02c1c1b8-6ffc-4ac6-8ca2-5191996b71c0.jpg)
 
 The resulting model is one that achieves an accuracy comparable to the latest implementations while being more lightweight.
